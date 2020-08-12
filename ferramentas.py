@@ -10,7 +10,7 @@ def passo_da_bissecao (f, a, b):
     else:
         return m, b
 
-def bissecao (f, a, b, xtol=1e-8, visual=False):
+def bissecao (f, a, b, xtol=1e-8, visual:bool=False):
     """Encontra uma raíz de  f  no intervalo  [a,b].
     
     Se visual=True: Retorna a raiz e uma lista com as extremidades dos intervalos construídos da forma:
@@ -31,14 +31,40 @@ def bissecao (f, a, b, xtol=1e-8, visual=False):
         return (a+b)/2
     
 
-def newton (f, df, x, xtol=1e-8):
-    """Aplica o método de Newton na função f.
-    """
 
-
-def deriv (f):
-    """Retorna a função derivada de f.
+def passo_newton (df):
+    """Retorna o novo valor de  x, aplicando uma aiteração do método de Newton.
     """
+    return df(0)
+
+def deriv (f, dh=1e-16):
+    """Retorna a aproximação da derivada de  f  em forma de função, dada um  delta h.
+    """
+    def df(x): 
+        """Retorna a aproximação da derivada da função no ponto  x.
+        """
+        return (f(x) - f(x+dh)) / dh
+    return df
+
+def newton (f, x_0, maxiter=1e3, erro_min=1e-16, visual:bool=False):
+    """Aplica o método de Newton na função  f  e retorna a aprox. da raiz (com o erro mínimo erro_min).
+    
+    Se visual=True: Retorna a raiz e uma lista com x_n alcansados, da forma:
+    (raíz, [x_1, x_2, x_3, ...])
+    
+    Se visual=False: Retorna a raíz de  f.
+    """
+    x_n = []
+    df = deriv(f, erro_min)
+    t, x = 0, x_0 # t  é o número de iterações
+    while t < maxiter:
+        x = passo_newton (df)
+        t += 1        
+        if visual:
+            x_n.append(x)
+    if visual: return x, x_n
+    else: return x
+
 
 
 cache_fib = {}
