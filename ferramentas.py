@@ -1,7 +1,7 @@
 # coding at utf-8
 
 # Sessão de importações
-import math
+import numpy as np
 
 def sqrt(x):
     assert x >= 0
@@ -34,10 +34,10 @@ def bissecao (f, a, b, xtol=1e-8, verbose=False):
     Se visual=True: Retorna a raiz e uma lista com as extremidades dos intervalos construídos da forma:
     (raíz, [(a_1,b_1), (a_2,b_2), ...])
     
-    Se visual=False: Retorna a raíz de  f  no intervalo.
+    Se verbose=False: Retorna a raíz de  f  no intervalo.
     """    
     intervalos = [(a,b)]
-    while abs(b-a) >= xtol: # "invertemos" o teste de parada. agora é teste de continnuada...
+    while abs(b-a) >= xtol: # "invertemos" o teste de parada. agora é teste de continuada...
         a, b = passo_da_bissecao (f, a, b)
         if verbose:
             intervalos.append((a,b))
@@ -52,7 +52,7 @@ def bissecao (f, a, b, xtol=1e-8, verbose=False):
 
 ### Método de Newton
 def passo_newton (df):
-    """Retorna o novo valor de  x, aplicando uma aiteração do método de Newton.
+    """Retorna o novo valor de  x, aplicando uma iteração do método de Newton.
     """
     return df(0)
 
@@ -68,10 +68,10 @@ def deriv (f, dh=1e-16):
 def newton (f, x_0, maxiter=1e3, erro_min=1e-16, verbose=False):
     """Aplica o método de Newton na função  f  e retorna a aprox. da raiz (com o erro mínimo erro_min).
     
-    Se visual=True: Retorna a raiz e uma lista com x_n alcansados, da forma:
+    Se verbose=True: Retorna a raiz e uma lista com x_n alcansados, da forma:
     (raíz, [x_1, x_2, x_3, ...])
     
-    Se visual=False: Retorna a raíz de  f.
+    Se verbose=False: Retorna a raíz de  f.
     """
     x_n = []
     df = deriv(f, erro_min)
