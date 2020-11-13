@@ -2,295 +2,390 @@
 
 # Sessão de importações
 import numpy as np
-
-def sqrt(x):
-    assert x >= 0
-    i = 1
-    while i**2 <= x:
-        i *= 2
-    y = 0
-    while i > 0:
-        if (y + i)**2 <= x:
-            y += 1
-        i //=2
-    return y
-
-
+import matplotlib.pyplot as plt
 
 ### Bisseção
-def passo_da_bissecao (f, a, b):
-    """Retorna o novo intervalo após uma etapa da bisseção da função f, 
+### --------
+def passo_da_bissecao(f, a: float, b: float):
+    """Retorna o novo intervalo após uma etapa da bisseção da função f,
     da forma (a,m) ou (m,b) segundo em qual seja possível garantir uma raiz de f.
     """
-    m = (a+b)/2
-    if f(m)*f(a) < 0:
+    m = (a + b) / 2
+    if f(m) * f(a) < 0:
         return a, m
     else:
         return m, b
 
-def bissecao (f, a, b, xtol=1e-8, verbose=False):
-    """Encontra uma raíz de  f  no intervalo  [a,b].
-    
-    Se visual=True: Retorna a raiz e uma lista com as extremidades dos intervalos construídos da forma:
-    (raíz, [(a_1,b_1), (a_2,b_2), ...])
-    
-    Se verbose=False: Retorna a raíz de  f  no intervalo.
-    """    
-    intervalos = [(a,b)]
-    while abs(b-a) >= xtol: # "invertemos" o teste de parada. agora é teste de continuada...
-        a, b = passo_da_bissecao (f, a, b)
+
+def bissecao(f, a: float, b: float, xtol=1e-8, ytol=1e-8, verbose=False):
+    """Encontra uma raíz de  f  no intervalo  [a,b] pelo método da bisseção.
+
+    Parâmetros
+    ----------
+    f : function
+        Função a ser utilizada.
+    a  : float
+        Extremidade esquerda do intervalo em que será procurada uma raiz.
+    b  : float
+        Extremidade direita do intervalo em que será procurada uma raiz.
+    xtol  : int/float, opcional
+        Tolerância ao redor da raiz no eixo x. O padrão é 1e-8.
+    ytol  : int/float, opcional
+        Tolerância ao redor da raiz no eixo y. O padrão é 1e-8.
+    verbose  : bool, opcional
+        Se True, retorna como terceiro valor uma lista com as extremidades dos intervalos construídos da forma: [(a_1,b_1), (a_2,b_2), ...]
+
+    Retorno
+    -------
+    Se verbose=False: retorna a tupla da forma (<raiz>, <numero_de_bissecoes>)
+    se verbose=True:  retorna a tupla da forma (<raiz>, <numero_de_bissecoes>, [(a_1,b_1), (a_2,b_2), ...])
+    """
+    a0, b0 = a, b
+    intervalos = [(a, b)]
+    num_bissecoes = 0
+    achei = False
+    while not abs(b - a) < xtol and not abs(f((a + b) / 2)) <= ytol:  # Para que a função saia do laço, será necessário que sejam satisfeitos pelo menos um dos critérios de parada!
+        # Verificamos se as extremidades do intervalo são raiz
+        if f(a) == 0:
+            valor_final, achei = a, True
+            break
+        elif f(b) == 0:
+            valor_final, achei = b, True
+            break
+
+        # Fazemos uma bicessão
+        a, b = passo_da_bissecao(f, a, b)
+        num_bissecoes += 1  # Atualizamos o número de vezes que foram feitas bicessões
         if verbose:
-            intervalos.append((a,b))
-    # Se chegamos até aqui, é porque o intervalo está pequeno o suficiente!
+            intervalos.append((a, b))
+    # Se chegamos até aqui, é porque já podemos parar!
+    if not achei:
+        valor_final = (a + b) / 2
+    if abs(f(valor_final)) > 1:  # Fazemos a prova real com uma tolerância muito grande porque a bisseção sempre encontra algum valor porque o intervalo fica pequeno o suficiente para passar na xtol. Dessa forma, avisamos ao usuário que o número obtido não se trata de uma raiz.
+        # raise ValueError(f'Não foi possível encontrar uma raiz de {f} no intervalo [{a0}, {b0}].')
+        print(f'Não foi possível encontrar uma raiz de {f} no intervalo [{a0}, {b0}].')
+        valor_final = None
     if verbose:
-        intervalos.append((a,b))
-        return (a+b)/2, intervalos
+        intervalos.append((a, b))
+        return valor_final, num_bissecoes, intervalos
     else:
-        return (a+b)/2
-    
+        return valor_final, num_bissecoes
 
 
-### Método de Newton
-def passo_newton (df):
-    """Retorna o novo valor de  x, aplicando uma iteração do método de Newton.
-    """
-    return df(0)
+def inv(f, a=0, b=1, xtol=1e-8, ytol=1e-8):
+    """Retorna a função inversa de  f  no intervalo [a,b].
+    A função inversa é garantida apenas para valores de  y  entre  f(a) e f(b)."""
 
-def deriv (f, dh=1e-16):
-    """Retorna a aproximação da derivada de  f  em forma de função, dada um  delta h.
-    """
-    def df(x): 
-        """Retorna a aproximação da derivada da função no ponto  x.
-        """
-        return (f(x) - f(x+dh)) / dh
-    return df
+    def func(y):
+        def aux(x):
+            return f(x) - y
 
-def newton (f, x_0, maxiter=1e3, erro_min=1e-16, verbose=False):
-    """Aplica o método de Newton na função  f  e retorna a aprox. da raiz (com o erro mínimo erro_min).
-    
-    Se verbose=True: Retorna a raiz e uma lista com x_n alcansados, da forma:
-    (raíz, [x_1, x_2, x_3, ...])
-    
-    Se verbose=False: Retorna a raíz de  f.
-    """
-    x_n = []
-    df = deriv(f, erro_min)
-    t, x = 0, x_0 # t  é o número de iterações
-    while t < maxiter:
-        x = passo_newton (df)
-        t += 1        
-        if verbose:
-            x_n.append(x)
-    if verbose: return x, x_n
-    else: return x
+        r, _ = bissecao(aux, a, b, xtol, ytol)
+        return r
+
+    return func
 
 
+def bissect_geq(l, v: float) -> int:
+    """First index  k  on an increasing list  l  such that  l[k] >= v.
+    Returns  len(l)  if  l[-1] < v."""
+    assert len(l) != 0, "A lista não pode ser indexada."
+    if l[-1] < v: return len(l)  # "caso base"
+    if l[0] >= v: return 0  # problema na verificação do l[a-1], pois acaba com a ordem da verificação.
 
-### Sequência de Fibonacci
-cache_fib = {}
-def fib_recursiva(n):
-    """Retorna o n-ésimo elemento da sequência de Fibonacci.
-    """
-    assert n >= 0 and isinstance(n, int), "Estamos trabalhando com fib positivo."
-    
-    #memoização
-    if n in cache_fib:
-        return cache_fib[n]
-    
-    #caso-base
-    if n == 0:
-        return 0
-    elif n == 1:
-        return 1
-    
-    #recursão
-    result = fib_recursiva(n-1) + fib_recursiva(n-2)
-    cache_fib[n] = result
-    return result
+    a, b = 0, len(l)
 
-def take(n, g):
-    """Gera até os n primeiros elementos do gerador g."""
-    if n <= 0:
-        return
-    for i,v in enumerate(g):
-        yield v # /0
-        if i > n-2: # start from zero, stop at *previous iteration*
-            return
-
-def fib_generator(): #f_{i} = f_{i-1} + f_{i-2}
-    """Retorna o gerador com os números da sequência de Fibonacci.
-    """
-    i = 0
     while True:
-        if i == 0:
-            yield 1
-            ultimo =1
-            i += 1
+        meio = (a + b) // 2
+        v_meio = l[meio]
+        if v_meio > v:  # Indica que o alvo está na primeira metade da lista.
+            if l[a - 1] < v and l[a] >= v: return a  # Verificamos as extremidades do intervalo
+            if l[b - 1] < v and l[b] >= v: return b
+            b, meio = meio, (a + meio) // 2
+        elif v_meio <= v:  # Indica que o alvo está na segunda metade da lista.
+            if l[a - 1] < v and l[a] >= v: return a
+            if l[b - 1] < v and l[b] >= v: return b
+            a, meio = meio, (meio + b) // 2
+
             
-            
-        if i <= 1:
-            yield 1
-            ultimo = 1
-            penultimo = 1
-            i += 1
+### Método de Newton
+### ----------------
+def newton(f, df, x0: float=0, prec: float=1e-8, ytol: float=1e-8, maxiter: int=100, verbose: bool=False):
+    """Aplica o método de Newton na função  f  e retorna a aprox. da raiz (com o erro mínimo erro_min).
+
+    Parameters
+    ----------
+    f : function
+        Função a qual será aplicada o Método de Newton
+    df : function
+        Derivada de f.
+    x0 : float, opcional
+        Ponto inicial a ser vasculhado. Idealmente, está próximo da raiz. O padrão é 0.
+    prec : float, optional
+        Tamanho do passo de newton pequeno o suficiente para retornarmos um valor. O padrão é 1e-8.
+    ytol : float, optional
+        Tamanho da tolerância ao redor do eixo y para retornarmos um valor. O padrão é 1e-8.
+    maxiter : int, optional
+        Máximo de iterações da função. O padrão é 100.
+    verbose : bool, optional
+        Estabelece se irá retornar, também, uma lista com os x_n alcansados.
+
+    Returns
+    -------
+        Se verbose=True:
+        <raíz: float>, <número de iterações: int>, <[x_1, x_2, x_3, ...]: list>
+        Se verbose=False:
+        <raíz: float>, <número de iterações: int>
+    """
+    trace = [x0]
+    num_iter = 0
+    x_i = x0
+
+    while num_iter <= maxiter:
+        passo = f(x_i)/df(x_i)
+        novo_x, num_iter = x_i - passo, num_iter + 1
+        trace.append(novo_x)
+        x_i = novo_x
+        if   abs(passo)  < prec: break
+        elif abs(f(x_i)) < ytol: break
         
-        else:
-            yield ultimo + penultimo
-            ultimo, penultimo = ultimo + penultimo, ultimo
-            i += 1
 
-def gen_fib_com (d):
-    """Retorna o gerador de números de Fibonacci com exatamente d dígitos.
+    if num_iter > maxiter:
+        novo_x = None # Retornamos None para alertar o usuário que não encontramos uma raiz
+    if verbose: return novo_x, num_iter, np.array(trace)
+    else: return novo_x, num_iter
+
+
+### Derivada
+### --------
+
+def df(f, x: float, h: float=1e-10):
+    """Retorna a derivada numérica de  f  no ponto  x, com aproximação de  h.
+    
+    Parameters
+    ----------
+    f : function
+        Função a ser derivada em  x.
+    x : float
+        Ponto em que  f  será derivada.
+    h : float, optional
+        Equivalente ao dh da derivada. Não utilize h <= 1e-16. O padrão é 1e-10.
+    
+    Returns
+    -------
+    p: float
+        p é o valor da derivada numérica f'(x).
     """
-    primeira_vez = True
-    if primeira_vez:
-        ultimo = next(fib_generator())
-        if len(str(ultimo)) == d:
-            yield ultimo
-            primeira_vez = False
-        primeira_vez = False
+    return (f(x+h) - f(x)) / h
+
+
+def df_central(f, x: float, h: float=1e-10):
+    """Retorna a derivada numérica central de  f  no ponto  x, com aproximação de  h.
     
-    while len(str(ultimo)) == d:
-        ultimo, penultimo = next(fib_generator()), ultimo
-        yield penultimo
-    return
-
-
-
-### Fatoração e Primalidade
-cache_primos = {}
-
-def multiplos (num):
-    """Recebe o inteiro num e retorna uma tupla com os múltiplos de num (incluindo o proprio num).
+    Parameters
+    ----------
+    f : function
+        Função a ser derivada em  x.
+    x : float
+        Ponto em que  f  será derivada.
+    h : float, optional
+        Equivalente ao dh da derivada. Não utilize h <= 1e-16. O padrão é 1e-10.
+    
+    Returns
+    -------
+    p: float
+        p é o valor da derivada numérica central f'(x).
     """
-    lista = [x for x in range (1,int(num/2+1)) if num % x == 0]
-    lista.append(num)
-    return tuple(lista)
+    return (f(x+h) - f(x-h)) / 2*h
 
-def crivo (n):
-    """Retorna o conjunto de primos até n, utilizando o método do Crivo de Erastótenes.
-    Ressalta-se que n representa o intervalo semiaberto [0,n[.
-                                                             
-    >>> crivo_bool (10)
-    {2, 3, 5, 7}
-    >>> crivo_bool (7)
-    {2, 3, 5}
+
+def secante(f, a, b, xtol=1e-8, maxiter=100):
+    """ Método da secante para a função  f  no intervalo  [a,b].
+
+        Retorna um número  z  e as listas de extremidades esquerda e direita produzidas ao longo do algoritmo,
+        que para quando o último passo é menor do que  xtol, ou depois de  maxiter  iterações.
     """
-    assert (isinstance(n, int)), "Para que a função funcione, n deve ser inteiro."
-    #1. cria lista de tamanho n, com elementos True
-    #2. caso base para evitar divisão por 0 e porque divisão por 1 não é critério para verificação de primos
-    #3. percorremos a lista
-    #3.1. se L[i] == True
-    #3.2. seus múltiplos (a partir de i**2) viram False
-    #4. retorna o conjunto de primos
+    def passo_secante(f, a, b): 
+        """Dada a função  f, e o intervalo [a, b], aplica um passo do método da secante."""
+        fa, fb = f(a), f(b) # Declaração de variaveis auxiliares
+        return (a*fb - b*fa)/(fb - fa)
     
-    primos = set({})
-    #1.
-    L = [True for x in range (n)]
-    #2.
-    L[0], L[1] = False, False
-    #3.
-    for i in range (sqrt(n) +1):
-        #3.1
-        if L[i] == True:
-            primos.add(i)
-            for j in range (i**2, len(L), i):
-                if j % i == 0:
-                    L[j] = False
-    return primos
+    # Estrutura recursiva
+    def aux(f, a, b, xtol, num_iter, l, r):
+        z = passo_secante(f, a, b) # Fazemos o passo
+        num_iter += 1 # Atualizamos o número de iterações
+        
+        l.append(a)
+        r.append(b)
+        
+        if abs(z - b) < xtol or num_iter == maxiter: return z, l, r # Atende aos critérios de parada
+        else: return aux(f, b, z, xtol, num_iter, l, r)
 
-def eh_primo (p):
-    """Verifica se p é primo. Retorna True se for primo e False se não for.
-    >>> eh_primo(10)
-    False
-    >>> eh_primo (5)
-    True
+    z, l, r = aux(f,a,b, xtol, 0, [], [])
+    return z, np.array(l), np.array(r)
+
+
+### Integral
+### --------
+
+def int_cauchy (f, a: float, b: float, N: float=1e4):
+    """Retorna a integral definida de uma função vetorizada  f.
+    
+    Parameters
+    ----------
+    f : function
+        Função a ser integrada;
+    a : float
+        Inicio do intervalo em que a integral será apreciada;
+    b : float
+        Final do intervalo em que a integral será apreciada;
+    N : float, optional
+        Número de subintervalos. O padrão é 1e4.
+    
+    Returns
+    -------
+    x : float
+        Valor da integral em [a, b].
     """
-    assert (isinstance(p, int)), "A entrada de p deve ser um número inteiro"
+    assert N > 0
+    l, h = np.linspace(a, b, num=N, endpoint=False, retstep=True) # endpoint faz com que gere todos os x_k de x_0 até x_N-1
+    return np.sum(f(l)) * h # np.sum  é mais rápido que  sum  pois é mais específico (otimizado)
 
-    if p in cache_primos:    
-        return cache_primos[p]
+def int_trap (f, a: float, b: float, N: int=1e4) -> float:
+    """Retorna a integral definida de uma função vetorizada  f.
     
-    #0. condições básicas para n não ser primo
-    casos_base = {1,2,3} #O 3 fica inserido nos casos base devido à forma que o programa foi escrito: se p == 3, em 1., o range é nulo.
-    if p in casos_base:
-        return True
-    if p % 2 == 0: # Pode nos poupar bastante tempo de cálculo.
-        return False
+    Parameters
+    ----------
+    f : function
+        Função a ser integrada;
+    a : float
+        Inicio do intervalo em que a integral será apreciada;
+    b : float
+        Final do intervalo em que a integral será apreciada;
+    N : int, optional
+        Número de retângulos. O padrão é 1e4.
     
-    #1. criar uma lista com os inteiros menores que raiz de p
-    N = [2*x-1 for x in range (2, int((p+1)/2))] #2*x-1 pois os pares já foram descartados em 0.
-    
-    #2. verificar se algum dos números da lista divide p
-    for num in N:
-        #3.1. caso sim, retornar False
-        if p % num == 0:
-            cache_primos[p] = False
-            return False
-    #3.2. caso não, retornar True
-    cache_primos[p] = True
-    return True
-
-def primo_maior_que (n):
-    """"Retorna o primeiro primo estritamente maior que n.
-    >>> primo_maior_que(10)
-    11
-    >>> primo_maior_que(5)
-    7
+    Returns
+    -------
+    x : float
+        Valor da integral em [a, b].
     """
-    n += 1 # testar n não é o objetivo da função.
-    if not eh_primo (n):
-        return primo_maior_que(n)
-    else:
-        return n
+    assert N > 0
+    l, h = np.linspace(a, b, num=N, endpoint=False, retstep=True)
+    return np.sum(f(l)) * h + (f(b) - f(a)) * h/2
 
-
-### Combinação (Triângulo de Pascal)
-cache_elemento = {}
-def pascal_elemento (i, j):
-    """Retorna o elemento do Triângulo de Pascal (combinação) de "coordenadas" (i,j), lembrando que a contagem começa em 0!
+def int_midp (f, a: float, b: float, N: int=1e4) -> float:
+    """Retorna a integral definida de uma função vetorizada  f no intervalo  [a,b] com N retângulos centrados nos pontos médios.
+    
+    Parameters
+    ----------
+    f : function
+        Função a ser integrada;
+    a : float
+        Inicio do intervalo em que a integral será apreciada;
+    b : float
+        Final do intervalo em que a integral será apreciada;
+    N : int, optional
+        Número de retângulos. O padrão é 1e4.
+    
+    Returns
+    -------
+    x : float
+        Valor da integral em [a, b].
     """
-    assert (i >= 0 or j >= 0 or j <= i), "Esse elemento não existe!"
-    
-    if (i,j) in cache_elemento:
-        return cache_elemento[(i,j)]
-    
-    if i == j or j == 0: # estabelecemos os caso base
-        return 1
-    
-    else: # e a recorrência
-        result = pascal_elemento(i-1,j) + pascal_elemento (i-1,j-1)
-        cache_elemento[(i,j)] = result
-        return result
+    assert N > 0
+    l, h = np.linspace(a, b, num=N, endpoint=False, retstep=True)
+    mids = l + h/2
+    return np.sum(f(mids)) * h
 
-def pascal (L):
-    """Retorna uma lista com o Triângulo de Pascal com L linhas. Cada linha é uma sub-lista.
+def int_simpson (f, a: float, b: float, N: int=1e4) -> float:
+    """Retorna a integral definida de uma função vetorizada  f no intervalo  [a,b]  com N > 0 
+    subintervalos.
     
-    >>> pascal(3)
-    [[1], [1, 1], [1, 2, 1], [1, 3, 3, 1]]
+    Parameters
+    ----------
+    f : function
+        Função a ser integrada;
+    a : float
+        Inicio do intervalo em que a integral será apreciada;
+    b : float
+        Final do intervalo em que a integral será apreciada;
+    N : int, optional
+        Número de subintervalos. O padrão é 1e4.
+    
+    Returns
+    -------
+    x : float
+        Valor da integral em [a, b].
     """
-    assert (L >= 0), "O número de linhas deve ser maior ou igual a zero!"
-
-    L += 1 # para a contagem das linhas partir de 0
-    A = [[x] for x in range (L)] #construímos as linhas, sem prestar atenção nos valores
-
-    # e as colunas -1
-    return [[pascal_elemento(i,j) for j in range(A[i][0]+1)] for i in range (L)]
+    assert N > 0
+    l, h = np.linspace(a,b, num=N, endpoint=False, retstep=True)
+    mids = l + h/2
+    return ( 4*np.sum(f(mids)) + 2*np.sum(f(l)) + (f(b) - f(a)) ) * h/6
 
 
+# Regressão
+# ---------
+def reg_poly(xs, ys, grau):
+    """Retorna a função da regressão polinomial dos pontos (xs,ys).
+    """
+    vander = np.vander(xs, grau+1) 
+    coefs, *_ = np.linalg.lstsq(vander, ys, rcond=None)
+    p = np.poly1d(coefs) 
+    return p 
 
+def regress_with_error(xs, ws, phis):
+    """Regressão linear dos pontos  (xs,ys)  para a base de funções dada pela lista  phis,
+    retornando os coeficientes e o erro da regressão."""
+    M_list = []
+    for x in xs:
+        linha = []
+        for phi in phis:
+            linha.append( phi(x) )
+        M_list.append(linha)
+    M = np.asmatrix(M_list)
+    coefs, err, *_ = np.linalg.lstsq(M, ws, rcond=None)
+    return coefs, err
 
+def reconstruct(coefs, base):
+    """Retorna a função correspondente aos coeficientes e à base escolhida de uma regressão.
+    """
+    def m(x):   
+        ans = 0
+        for beta, coef in zip(base, coefs):
+            ans += coef * beta(x)
+        return ans         
+        
+    return m
 
+### Gráficos
+### --------
+
+def graph_erro_num_subintervalos (methods: list, f,  ans: float, a: float, b: float, ns):
+    """Plota o gráfico do erro das funções em  methods  , que utilizam o intervalo  [a,b]  aplicados em  f  com  ns retângulos.
+    
+    Ex.: methods = [int_r, int_t, int_midp]
+         f = np.cos
+         ns = np.logspace(2,6, num=50, dtype=int)
+         
+    """
+    for m in methods:
+        err = [m(f, a, b, n) - ans for n in ns]
+        plt.loglog(ns, np.abs(err), label=m.__name__)
+    plt.legend(title='Método')
+    plt.xlabel(f'# subdivisões do intervalo [{a},{b}]')
+    plt.ylabel('Erro de integração em função do número de subintervalos')
+    plt.grid
+    
 class memoize:
-	
-	def __init__(self, func):
-		self.func = func
-		self.cache = {}
-	
-	def __call__(self, *args):
-		if args in self.cache:
-			return self.cache[args]
-		else:
-			val = self.func(*args)
-			self.cache[args] = val
-			return val
+    def __init__(self, func):
+        self.func = func
+        self.cache = {}
+
+    def __call__(self, *args):
+        if args in self.cache:
+            return self.cache[args]
+        else:
+            val = self.func(*args)
+            self.cache[args] = val
+            return val
